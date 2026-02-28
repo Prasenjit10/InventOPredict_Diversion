@@ -17,14 +17,16 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in environment variables")
+    print("⚠️ GEMINI_API_KEY not found")
+else:
+    genai.configure(api_key=API_KEY)
 
-genai.configure(api_key=API_KEY)
 
 app = Flask(__name__)
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance/site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -66,6 +68,67 @@ class StockoutReminder(db.Model):
 
 with app.app_context():
     db.create_all()
+
+
+# ---------------- Auth Routes ----------------
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+
+    required_fields = [
+        'company_name',
+        'company_code',
+        'warehouse_name',
+        'warehouse_location',
+        'warehouse_code',
+        'password'
+    ]
+
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"message": f"{field} is required"}), 400
+
+    # Check if company code already exists
+    if User.query.filter_by(company_code=data['company_code']).first():
+        return jsonify({"message": "Company code already exists"}), 409
+
+    hashed_password = generate_password_hash(data['password'])
+
+    new_user = User(
+        company_name=data['company_name'],
+        company_code=data['company_code'],
+        warehouse_name=data['warehouse_name'],
+        warehouse_location=data['warehouse_location'],
+        warehouse_code=data['warehouse_code'],
+        password=hashed_password
+    )
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"message": "Registration successful"}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+
+    user = User.query.filter_by(warehouse_code=data.get('warehouse_code')).first()
+
+    if not user or not check_password_hash(user.password, data.get('password')):
+        return jsonify({"message": "Invalid company code or password"}), 401
+
+    return jsonify({
+        "message": "Login successful",
+        "user": {
+            "id": user.id,
+            "company_name": user.company_name,
+            "company_code": user.company_code,
+            "warehouse_name": user.warehouse_name,
+            "warehouse_location": user.warehouse_location
+        }
+    }), 200
+
+from datetime import datetime
 
 if __name__ == '__main__':
     app.run(debug=True)
