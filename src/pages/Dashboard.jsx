@@ -14,7 +14,7 @@ import { TrendingUp, AlertTriangle, CalendarDays } from "lucide-react";
 /* ───────── Calendar Utilities ───────── */
 
 // Change year if needed
-const YEAR = 2024; // 2024 is leap year (Feb = 29)
+const YEAR = 2026; // 2024 is leap year (Feb = 29)
 
 const getDaysInMonth = (year, monthIndex) => {
   return new Date(year, monthIndex + 1, 0).getDate();
