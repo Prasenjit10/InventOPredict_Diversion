@@ -10,7 +10,7 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Contact from './pages/Contact';
 import ScrollToTop from './components/ScrollToTop';
-import ChatBot from './components/ChatBot';
+import ChatBot from './components/Chatbot';
 import AnalysisResult from './pages/AnalysisResult';
 
 function App() {
