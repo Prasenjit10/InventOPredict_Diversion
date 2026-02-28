@@ -133,6 +133,60 @@ def login():
 
 from datetime import datetime
 
+@app.route("/create-stockout-reminders", methods=["POST"])
+def create_stockout_reminders():
+    data = request.get_json()
+    email = data.get("email")
+    results = data.get("results", [])
+
+    if not email or not results:
+        return jsonify({"message": "Invalid data"}), 400
+    saved_products = []
+    for item in results:
+        try:
+            stockout_date = datetime.strptime(
+                item["stockout_date"], "%Y-%m-%d"
+            ).date()
+
+            reminder = StockoutReminder(
+                email=email,
+                product_name=item["product_name"],
+                stockout_date=stockout_date
+            )
+            db.session.add(reminder)
+            saved_products.append(
+                f"• {item['product_name']} (Stockout: {item['stockout_date']})"
+            )
+        except Exception:
+            continue
+
+    db.session.commit()
+    # check_and_send_reminders()
+    # 🔔 IMMEDIATE CONFIRMATION EMAIL
+    product_list = "\n".join(saved_products)
+
+    send_email(
+        email,
+        "Stockout Reminders Activated ✅",
+        f"""
+Hello,
+
+Your stockout reminders have been successfully activated.
+
+You will receive reminder emails:
+• 2 days before stockout
+• 1 day before stockout
+• On the stockout day (9:00 AM)
+
+Tracked products:
+{product_list}
+
+– InventOPredict Team
+"""
+    )
+    return jsonify({"message": "Reminders created"}), 201
+
+
 
 # ---------------- Contact Routes ----------------
 @app.route('/Contact', methods=['POST'])
