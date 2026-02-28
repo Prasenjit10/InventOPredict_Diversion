@@ -85,9 +85,15 @@ const Footer = () => {
           <div className="flex flex-col gap-1 min-w-[140px]">
             <h4 className="font-bold text-base mb-1">External Links</h4>
 
-            <Link to="#" className="hover:underline">
-              Documentation
-            </Link>
+
+             <a
+                    href="https://github.com/Prasenjit10/InventOPredict_Diversion/blob/main/README.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                    >
+                    Documentation
+                </a>
                 <a
                     href="https://github.com/Prasenjit10/InventOPredict_Diversion"
                     target="_blank"
@@ -113,3 +119,4 @@ const Footer = () => {
 };
 
 export default Footer;
+
