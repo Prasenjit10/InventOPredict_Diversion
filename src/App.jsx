@@ -23,7 +23,7 @@ function App() {
         <Navbar />
 
         {/* Page content fills remaining space */}
-        <main className="flex-grow">
+        <main className="flex-grow ">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/analysis" element={<Analysis />} />

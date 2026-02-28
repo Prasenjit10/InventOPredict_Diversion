@@ -119,7 +119,7 @@ const Dashboard = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className=" bg-gray-50 p-8 mt-20">
 
       {/* Header */}
       <div className="mb-8">
