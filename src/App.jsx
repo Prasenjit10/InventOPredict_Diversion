@@ -12,6 +12,7 @@ import Contact from './pages/Contact';
 import ScrollToTop from './components/ScrollToTop';
 import ChatBot from './components/Chatbot';
 import AnalysisResult from './pages/AnalysisResult';
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/contactus" element={<Contact />} />
             <Route path="/analysisresult" element={<AnalysisResult/>} />
+            <Route path="/dashboard" element={<Dashboard />} />
 
           </Routes>
         </main>
