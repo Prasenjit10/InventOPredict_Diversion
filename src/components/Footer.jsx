@@ -88,9 +88,14 @@ const Footer = () => {
             <Link to="#" className="hover:underline">
               Documentation
             </Link>
-            <Link to="#" className="hover:underline">
-              GitHub Repository
-            </Link>
+                <a
+                    href="https://github.com/Prasenjit10/InventOPredict_Diversion"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                    >
+                    GitHub Repository
+                </a>
           </div>
         </div>
 
