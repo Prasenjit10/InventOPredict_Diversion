@@ -2,15 +2,22 @@ import pandas as pd
 import numpy as np
 
 def build_pipeline(input_path: str):
-    
+    """
+    Build features for demand forecasting.
+    Works for multi-sheet Excel OR single-sheet Excel/CSV.
+    Returns final_df ready for model training/prediction.
+    """
+
+    # 1. Load dataset
     if input_path.endswith(".xlsx"):
-        df = pd.read_excel(input_path, sheet_name=None)  
+        df = pd.read_excel(input_path, sheet_name=None)  # dict of DataFrames
     elif input_path.endswith(".csv"):
         single_df = pd.read_csv(input_path)
-        df = {"single_sheet": single_df} 
+        df = {"single_sheet": single_df}  # wrap to behave like multi-sheet
     else:
         raise ValueError("File format not supported. Use .xlsx or .csv")
 
+    # 2. Extract sheets safely (NO `or` chaining!)
     if "blinkit_inventory" in df:
         sheet_inventory = df["blinkit_inventory"]
     elif "inventory" in df:
@@ -41,11 +48,13 @@ def build_pipeline(input_path: str):
     else:
         sheet_products = pd.DataFrame()
 
+    # 3. Date conversion
     if not sheet_inventory.empty and "date" in sheet_inventory.columns:
         sheet_inventory["date"] = pd.to_datetime(sheet_inventory["date"], errors="coerce")
     if not sheet_orders.empty and "order_date" in sheet_orders.columns:
         sheet_orders["order_date"] = pd.to_datetime(sheet_orders["order_date"], errors="coerce")
 
+    # 4. Clean data
     if not sheet_orderitems.empty and "quantity" in sheet_orderitems.columns:
         sheet_orderitems = sheet_orderitems[sheet_orderitems["quantity"] >= 0]
     if not sheet_inventory.empty and "stock_received" in sheet_inventory.columns and "damaged_stock" in sheet_inventory.columns:
@@ -53,6 +62,7 @@ def build_pipeline(input_path: str):
             (sheet_inventory["stock_received"] >= 0) & (sheet_inventory["damaged_stock"] >= 0)
         ]
 
+    # 5. Merge orders with items
     if not sheet_orders.empty and "order_id" in sheet_orders.columns:
         orderitems_with_dates = pd.merge(
             sheet_orderitems,
@@ -64,6 +74,7 @@ def build_pipeline(input_path: str):
         orderitems_with_dates = sheet_orderitems.copy()
         orderitems_with_dates["order_date"] = pd.NaT
 
+    # 6. Feature Engineering
     stock_received = (
         sheet_inventory.groupby("product_id")["stock_received"].sum()
         if "stock_received" in sheet_inventory else pd.Series(dtype=float)
@@ -90,11 +101,13 @@ def build_pipeline(input_path: str):
         "active_days": active_days
     }).fillna(0)
 
+    # Avg daily sales
     combined_df["avg_daily_sales"] = combined_df.apply(
         lambda row: row["total_quantity"] / row["active_days"] if row["active_days"] > 0 else 0,
         axis=1
     )
 
+    # Avg monthly sales
     if "order_date" in orderitems_with_dates.columns and orderitems_with_dates["order_date"].notna().any():
         orderitems_with_dates["month_year"] = orderitems_with_dates["order_date"].dt.to_period("M")
         monthly_sales = orderitems_with_dates.groupby(["product_id", "month_year"])["quantity"].sum().reset_index()
@@ -104,18 +117,22 @@ def build_pipeline(input_path: str):
 
     combined_df = combined_df.join(avg_monthly_sales.rename("avg_sales_per_month"))
 
+    # Predicted days
     combined_df["predicted_days"] = combined_df.apply(
         lambda row: row["net_stock"] / row["avg_daily_sales"] if row["avg_daily_sales"] > 0 else 0,
         axis=1
     ).replace([np.inf, -np.inf], 0)
 
+    # Status
     combined_df["status"] = combined_df["predicted_days"].apply(
         lambda x: "Overstocked" if x >= 100 else ("Understocked" if x < 50 else "Optimal")
     )
 
+    # Add product info
     if not sheet_products.empty and "product_id" in sheet_products.columns:
         combined_df = combined_df.join(sheet_products.set_index("product_id"), on="product_id")
 
+    # Dates
     if "date" in sheet_inventory.columns:
         last_inventory_date = sheet_inventory.groupby("product_id")["date"].max()
         combined_df = combined_df.join(last_inventory_date.rename("last_inventory_date"), on="product_id")
@@ -128,11 +145,13 @@ def build_pipeline(input_path: str):
         combined_df["quarter"] = 0
         combined_df["month"] = 0
 
+    # Encoded category
     if "category" in combined_df.columns:
         combined_df["category_encoded"] = combined_df["category"].factorize()[0]
     else:
         combined_df["category_encoded"] = 0
 
+    # Reorder threshold
     combined_df["reorder_threshold"] = 0.2 * combined_df["avg_sales_per_month"]
 
     return combined_df.reset_index()

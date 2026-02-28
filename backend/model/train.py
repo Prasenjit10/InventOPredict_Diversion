@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 from pipeline import build_pipeline
 import os
 
+# Load and process dataset
 dataset_path = os.path.join(os.path.dirname(__file__), "blinkit sales dataset.xlsx")
 final_df = build_pipeline(dataset_path)
 
@@ -12,7 +13,6 @@ features = [
     'month', 'dayofweek', 'quarter',
     'avg_sales_per_month', 'category_encoded', 'reorder_threshold'
 ]
-
 target = 'predicted_days'
 
 X = final_df[features].fillna(0)
@@ -27,5 +27,6 @@ model = xgb.XGBRegressor(
 )
 model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=100)
 
+# Save model
 joblib.dump(model, "demand_forecast_model.pkl")
 print("✅ Model trained and saved as demand_forecast_model.pkl")
