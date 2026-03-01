@@ -1,32 +1,40 @@
+import os
 import joblib
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from pipeline import build_pipeline
-import os
+from .pipeline import build_pipeline
 
-# Load and process dataset
-dataset_path = os.path.join(os.path.dirname(__file__), "blinkit sales dataset.xlsx")
+BASE_DIR = os.path.dirname(__file__)
+dataset_path = os.path.join(BASE_DIR, "blinkit sales dataset.xlsx")
+
 final_df = build_pipeline(dataset_path)
 
 features = [
-    'net_stock', 'total_quantity', 'active_days', 'avg_daily_sales',
-    'month', 'dayofweek', 'quarter',
-    'avg_sales_per_month', 'category_encoded', 'reorder_threshold'
+    "avg_daily_sales",
+    "sales_volatility",
+    "festival_score",
+    "festival_electronics_boost",
+    "net_stock"
 ]
-target = 'predicted_days'
+
+target = "future_30_day_demand"
 
 X = final_df[features].fillna(0)
 y = final_df[target]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
 model = xgb.XGBRegressor(
-    n_estimators=1000,
-    learning_rate=0.01,
-    early_stopping_rounds=50
+    n_estimators=400,
+    learning_rate=0.05,
+    max_depth=6
 )
-model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=100)
 
-# Save model
-joblib.dump(model, "demand_forecast_model.pkl")
-print("✅ Model trained and saved as demand_forecast_model.pkl")
+model.fit(X_train, y_train)
+
+model_path = os.path.join(BASE_DIR, "demand_model.pkl")
+joblib.dump(model, model_path)
+
+print("✅ Model trained successfully.")

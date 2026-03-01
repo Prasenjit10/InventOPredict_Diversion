@@ -257,26 +257,39 @@ def get_feedback():
 # ---------------- Prediction Route ----------------
 @app.route('/predict', methods=['POST'])
 def predict():
+
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files['file']
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-        file.save(tmp.name)
-        tmp_path = tmp.name
+    tmp_path = None
 
     try:
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+            file.save(tmp.name)
+            tmp_path = tmp.name
+
+        # Run prediction
         pred_df = predict_stockout(tmp_path)
-        os.remove(tmp_path)
+
+        if pred_df is None or pred_df.empty:
+            return jsonify({"error": "Prediction result is empty"}), 500
 
         return jsonify({
             "summary": "Stock prediction analysis completed.",
+            "total_rows": len(pred_df),
             "fields": pred_df.to_dict(orient="records")
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+    finally:
+        # Ensure temp file is removed even if error occurs
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
     
 @app.route("/test-email")
 def test_email():

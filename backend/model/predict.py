@@ -1,52 +1,66 @@
+import os
 import joblib
 import pandas as pd
 import numpy as np
-import os
 from datetime import datetime
 from .pipeline import build_pipeline
 
+BASE_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(BASE_DIR, "demand_model.pkl")
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError("Model file not found. Train the model first.")
+
+model = joblib.load(MODEL_PATH)
+
 
 def predict_stockout(input_file):
-    # 1. Load model
-    MODEL_PATH = os.path.join(os.path.dirname(__file__), "demand_forecast_model.pkl")
-    model = joblib.load(MODEL_PATH)
-
-    # 2. Process dataset
+    # Run data pipeline
     final_df = build_pipeline(input_file)
 
     features = [
-        'net_stock', 'total_quantity', 'active_days', 'avg_daily_sales',
-        'month', 'dayofweek', 'quarter',
-        'avg_sales_per_month', 'category_encoded', 'reorder_threshold'
+        "avg_daily_sales",
+        "sales_volatility",
+        "festival_score",
+        "festival_electronics_boost",
+        "net_stock"
     ]
 
+    # Ensure required features exist
+    for col in features:
+        if col not in final_df.columns:
+            raise ValueError(f"Missing required column: {col}")
+
+    # Prepare feature matrix
     X_new = final_df[features].fillna(0)
 
-    # 3. Predict days to stockout FROM last inventory date
-    predicted_days_from_last = model.predict(X_new)
+    if X_new.empty:
+        raise ValueError("No data available for prediction.")
 
-    # 4. Clamp negative values
-    predicted_days_from_last = np.maximum(predicted_days_from_last, 0).astype(int)
+    # Model prediction
+    predicted_30_day_demand = model.predict(X_new)
 
-    # 5. Calculate predicted stockout date
+    # Convert to daily demand (minimum safeguard)
+    predicted_daily_demand = predicted_30_day_demand / 30
+    predicted_daily_demand = np.maximum(predicted_daily_demand, 0.1)
+
+    # Calculate stockout days
+    stockout_days = final_df["net_stock"] / predicted_daily_demand
+    stockout_days = stockout_days.clip(lower=0).astype(int)
+
+    # Calculate stockout date
     predicted_stockout_date = (
-        final_df["last_inventory_date"] +
-        pd.to_timedelta(predicted_days_from_last, unit="D")
+        pd.Timestamp(datetime.today().date()) +
+        pd.to_timedelta(stockout_days, unit="D")
     )
 
-    # 6. Calculate DAYS LEFT from TODAY (IMPORTANT FIX)
-    today = pd.Timestamp(datetime.today().date())
-
-    days_left = (predicted_stockout_date - today).dt.days
-    days_left = days_left.clip(lower=0)
-
-    # 7. Build final result
-    pred_df = pd.DataFrame({
-        "Product_id": final_df["product_id"],
-        "Product_name": final_df.get("product_name", "Unknown"),
-        "Category": final_df.get("category", "Unknown"),
-        "Days_left_to_stockout": days_left,
-        "Predicted_stockout_date": predicted_stockout_date
+    # Final result
+    result = pd.DataFrame({
+        "product_id": final_df["product_id"],
+        "product_name": final_df["product_name"],
+        "category": final_df["category"],
+        "days_left": stockout_days,
+        "stockout_date": predicted_stockout_date.astype(str)
     })
 
-    return pred_df
+    return result

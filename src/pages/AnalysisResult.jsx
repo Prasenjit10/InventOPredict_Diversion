@@ -6,11 +6,13 @@ import { ArrowUp, ArrowDown } from "lucide-react";
 const AnalysisResult = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const data = state?.fields;
+
+  // ✅ Backend sends { summary, total_rows, fields }
+  const data = state?.fields || [];
 
   const [downloading, setDownloading] = useState(false);
   const [search, setSearch] = useState("");
-  const [sortOrder, setSortOrder] = useState(null); // 'asc' | 'desc' | null
+  const [sortOrder, setSortOrder] = useState(null);
 
   // 🔔 Reminder states
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -18,7 +20,7 @@ const AnalysisResult = () => {
   const [savingReminder, setSavingReminder] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
-  if (!data || !Array.isArray(data) || data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     return (
       <div className="pt-24 text-center text-gray-500 text-lg">
         No analysis found
@@ -32,9 +34,9 @@ const AnalysisResult = () => {
 
     return data.filter(
       (row) =>
-        row.Product_id?.toString().toLowerCase().includes(q) ||
-        row.Product_name?.toLowerCase().includes(q) ||
-        row.Category?.toLowerCase().includes(q)
+        row.product_id?.toString().toLowerCase().includes(q) ||
+        row.product_name?.toLowerCase().includes(q) ||
+        row.category?.toLowerCase().includes(q)
     );
   }, [search, data]);
 
@@ -44,10 +46,10 @@ const AnalysisResult = () => {
 
     return [...filteredData].sort((a, b) => {
       if (sortOrder === "asc") {
-        return a.Days_left_to_stockout - b.Days_left_to_stockout;
+        return a.days_left - b.days_left;
       }
       if (sortOrder === "desc") {
-        return b.Days_left_to_stockout - a.Days_left_to_stockout;
+        return b.days_left - a.days_left;
       }
       return 0;
     });
@@ -61,6 +63,7 @@ const AnalysisResult = () => {
     });
   };
 
+  // 📥 Download Excel
   const handleDownload = () => {
     setDownloading(true);
     setTimeout(() => {
@@ -72,7 +75,7 @@ const AnalysisResult = () => {
     }, 800);
   };
 
-  // 🔔 Create reminders (GLOBAL)
+  // 🔔 Create reminders
   const handleCreateReminder = async () => {
     if (!email) {
       alert("Please enter an email");
@@ -84,11 +87,9 @@ const AnalysisResult = () => {
     const payload = {
       email,
       results: sortedData.map((row) => ({
-        product_name: row.Product_name,
-        stockout_date: new Date(row.Predicted_stockout_date)
-  .toISOString()
-  .split("T")[0],
-        days_left: row.Days_left_to_stockout,
+        product_name: row.product_name,
+        stockout_date: row.stockout_date,
+        days_left: row.days_left,
       })),
     };
 
@@ -102,20 +103,18 @@ const AnalysisResult = () => {
         }
       );
 
-      const data = await res.json();
+      const responseData = await res.json();
 
       if (res.ok) {
         setShowReminderModal(false);
-setEmail("");
-setShowSuccessPopup(true);
+        setEmail("");
+        setShowSuccessPopup(true);
 
-// auto hide popup after 2.5 seconds
-setTimeout(() => {
-  setShowSuccessPopup(false);
-}, 2500);
-
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+        }, 2500);
       } else {
-        alert(data.message || "Failed to create reminders");
+        alert(responseData.message || "Failed to create reminders");
       }
     } catch (err) {
       alert("Server error while creating reminders");
@@ -127,9 +126,10 @@ setTimeout(() => {
   return (
     <div className="pt-24 min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-4">
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-xl flex flex-col">
+
         {/* Header */}
         <div className="p-6 border-b grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
-          {/* Left */}
+
           <div>
             <button
               onClick={() => navigate("/analysis")}
@@ -139,12 +139,10 @@ setTimeout(() => {
             </button>
           </div>
 
-          {/* Center */}
           <h2 className="text-2xl font-bold text-gray-800 text-center">
             Stockout Prediction Result
           </h2>
 
-          {/* Right */}
           <div className="flex gap-3 sm:justify-end">
             <button
               onClick={() => setShowReminderModal(true)}
@@ -193,7 +191,6 @@ setTimeout(() => {
                     <th className="px-4 py-3 font-semibold">
                       Category
                     </th>
-
                     <th
                       onClick={toggleSort}
                       className="px-4 py-3 text-center font-semibold cursor-pointer select-none"
@@ -204,7 +201,6 @@ setTimeout(() => {
                         {sortOrder === "desc" && <ArrowDown size={16} />}
                       </div>
                     </th>
-
                     <th className="px-4 py-3 font-semibold">
                       Stockout Date
                     </th>
@@ -218,19 +214,19 @@ setTimeout(() => {
                       className="odd:bg-white even:bg-blue-50 hover:bg-blue-100 transition"
                     >
                       <td className="px-4 py-2 text-center">
-                        {row.Product_id}
+                        {row.product_id}
                       </td>
                       <td className="px-4 py-2">
-                        {row.Product_name}
+                        {row.product_name}
                       </td>
                       <td className="px-4 py-2">
-                        {row.Category}
+                        {row.category}
                       </td>
                       <td className="px-4 py-2 text-center font-bold text-red-600">
-                        {row.Days_left_to_stockout}
+                        {row.days_left}
                       </td>
                       <td className="px-4 py-2">
-                        {row.Predicted_stockout_date}
+                        {row.stockout_date}
                       </td>
                     </tr>
                   ))}
@@ -240,23 +236,23 @@ setTimeout(() => {
           </div>
         </div>
       </div>
-      {/* ✅ Success Popup */}
-{showSuccessPopup && (
-  <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
-    <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
-      <span className="text-xl">✅</span>
-      <div>
-        <p className="font-semibold">Reminder Activated</p>
-        <p className="text-sm opacity-90">
-          You’ll receive emails on stockout dates
-        </p>
-      </div>
-    </div>
-  </div>
-)}
 
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+            <span className="text-xl">✅</span>
+            <div>
+              <p className="font-semibold">Reminder Activated</p>
+              <p className="text-sm opacity-90">
+                You’ll receive emails on stockout dates
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* 🔔 Reminder Modal */}
+      {/* Reminder Modal */}
       {showReminderModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white w-96 rounded-xl shadow-xl p-6">
