@@ -318,30 +318,6 @@ def chat():
 
     return jsonify({"reply": reply})
 
-# @app.route('/chat', methods=['POST'])
-# def chat():
-#     data = request.get_json()
-#     message = data.get('message', '')
-#     context = data.get('context', '')
-
-#     try:
-#         model = genai.GenerativeModel("gemini-3-flash-preview")
-#         prompt = f"{context}\n\nUser: {message}\nAI:"
-#         response = model.generate_content(prompt)
-
-#         reply = response.text if response and hasattr(response, "text") else (
-#             "I couldn't generate a response right now."
-#         )
-
-#     except Exception as e:
-#         # 🔒 SAFE fallback when quota / network / API error happens
-#         print("Gemini error:", str(e))  # logs error in terminal
-#         reply = (
-#             "⚠️ Chat service is temporarily unavailable "
-#             "due to usage limits. Please try again later."
-#         )
-
-#     return jsonify({"reply": reply})
 
 
 def send_email(to_email, subject, body):
