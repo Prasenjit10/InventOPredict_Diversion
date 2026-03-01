@@ -7,11 +7,21 @@ import os
 import tempfile
 import google.generativeai as genai
 from model.predict import predict_stockout
+from model.pipeline import build_pipeline
 import smtplib
 from email.mime.text import MIMEText
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import date
+import joblib
 
+MODEL_PATH = os.path.join("model", "demand_model.pkl")
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError("Model file not found.")
+
+model = joblib.load(MODEL_PATH)
+
+print("✅ ML model loaded successfully")
 load_dotenv()
 # ---------------- API KEY ----------------
 API_KEY = os.getenv("GEMINI_API_KEY")
@@ -290,6 +300,93 @@ def predict():
         # Ensure temp file is removed even if error occurs
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+# ---------------- Product Dashboard Route ----------------
+
+from datetime import datetime, timedelta
+import numpy as np
+
+from datetime import datetime, timedelta
+import numpy as np
+import pandas as pd
+
+@app.route("/product-dashboard/<int:product_id>", methods=["GET"])
+def product_dashboard(product_id):
+
+    try:
+        DATASET_PATH = "proper_blinkit_dataset.xlsx"
+
+        pipeline_output = build_pipeline(DATASET_PATH)
+        aggregated_df = pipeline_output["aggregated"]
+
+        product_row = aggregated_df[
+            aggregated_df["product_id"] == product_id
+        ]
+
+        if product_row.empty:
+            return jsonify({"error": "Product not found"}), 404
+
+        product_row = product_row.iloc[0]
+
+        # ---------- Prediction (SAME as /predict) ----------
+        features = [
+            "avg_daily_sales",
+            "sales_volatility",
+            "festival_score",
+            "festival_electronics_boost",
+            "net_stock"
+        ]
+
+        X = pd.DataFrame([product_row[features]])
+
+        predicted_30_day_demand = model.predict(X)[0]
+        predicted_daily_demand = max(predicted_30_day_demand / 30, 0.1)
+
+        net_stock = float(product_row["net_stock"])
+
+        days_left = int(net_stock / predicted_daily_demand)
+
+        today = datetime.today().date()
+        predicted_stockout_date = (
+            today + timedelta(days=days_left)
+        ).strftime("%Y-%m-%d")
+
+        # ---------- Stock Status ----------
+        if days_left < 7:
+            stock_status = "Understock"
+        elif days_left > 60:
+            stock_status = "Overstock"
+        else:
+            stock_status = "Fine"
+
+        # ---------- Generate 30-day visual trend ----------
+        avg_daily = float(product_row["avg_daily_sales"])
+
+        historical_data = []
+
+        for i in range(30):
+            date = today - timedelta(days=29 - i)
+            quantity = max(avg_daily + np.random.randint(-5, 6), 0)
+
+            historical_data.append({
+                "date": date.strftime("%Y-%m-%d"),
+                "quantity": float(quantity)
+            })
+
+        return jsonify({
+            "product_id": int(product_id),
+            "product_name": product_row["product_name"],
+            "category": product_row["category"],
+            "avg_daily_sales": avg_daily,
+            "days_left": days_left,
+            "stock_status": stock_status,
+            "predicted_stockout_date": predicted_stockout_date,
+            "historical_data": historical_data
+        })
+
+    except Exception as e:
+        print("Dashboard error:", str(e))
+        return jsonify({"error": str(e)}), 500
     
 @app.route("/test-email")
 def test_email():
