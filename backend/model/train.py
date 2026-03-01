@@ -7,7 +7,8 @@ from .pipeline import build_pipeline
 BASE_DIR = os.path.dirname(__file__)
 dataset_path = os.path.join(BASE_DIR, "blinkit sales dataset.xlsx")
 
-final_df = build_pipeline(dataset_path)
+pipeline_output = build_pipeline(dataset_path)
+final_df = pipeline_output["aggregated"]
 
 features = [
     "avg_daily_sales",

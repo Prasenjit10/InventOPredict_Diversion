@@ -6,8 +6,6 @@ import { ArrowUp, ArrowDown } from "lucide-react";
 const AnalysisResult = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-
-  // ✅ Backend sends { summary, total_rows, fields }
   const data = state?.fields || [];
 
   const [downloading, setDownloading] = useState(false);
@@ -28,10 +26,9 @@ const AnalysisResult = () => {
     );
   }
 
-  // 🔍 Search filter
+  // 🔍 Search
   const filteredData = useMemo(() => {
     const q = search.toLowerCase();
-
     return data.filter(
       (row) =>
         row.product_id?.toString().toLowerCase().includes(q) ||
@@ -40,30 +37,23 @@ const AnalysisResult = () => {
     );
   }, [search, data]);
 
-  // 🔽🔼 Sort by Days Left
+  // 🔽 Sort
   const sortedData = useMemo(() => {
     if (!sortOrder) return filteredData;
-
-    return [...filteredData].sort((a, b) => {
-      if (sortOrder === "asc") {
-        return a.days_left - b.days_left;
-      }
-      if (sortOrder === "desc") {
-        return b.days_left - a.days_left;
-      }
-      return 0;
-    });
+    return [...filteredData].sort((a, b) =>
+      sortOrder === "asc"
+        ? a.days_left - b.days_left
+        : b.days_left - a.days_left
+    );
   }, [filteredData, sortOrder]);
 
   const toggleSort = () => {
-    setSortOrder((prev) => {
-      if (prev === "asc") return "desc";
-      if (prev === "desc") return null;
-      return "asc";
-    });
+    setSortOrder((prev) =>
+      prev === "asc" ? "desc" : prev === "desc" ? null : "asc"
+    );
   };
 
-  // 📥 Download Excel
+  // 📥 Download
   const handleDownload = () => {
     setDownloading(true);
     setTimeout(() => {
@@ -116,7 +106,7 @@ const AnalysisResult = () => {
       } else {
         alert(responseData.message || "Failed to create reminders");
       }
-    } catch (err) {
+    } catch {
       alert("Server error while creating reminders");
     } finally {
       setSavingReminder(false);
@@ -129,24 +119,21 @@ const AnalysisResult = () => {
 
         {/* Header */}
         <div className="p-6 border-b grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
+          <button
+            onClick={() => navigate("/analysis")}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+          >
+            ← Analyse Again
+          </button>
 
-          <div>
-            <button
-              onClick={() => navigate("/analysis")}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition"
-            >
-              ← Analyse Again
-            </button>
-          </div>
-
-          <h2 className="text-2xl font-bold text-gray-800 text-center">
+          <h2 className="text-2xl font-bold text-center">
             Stockout Prediction Result
           </h2>
 
-          <div className="flex gap-3 sm:justify-end">
+          <div className="flex gap-3 justify-end">
             <button
               onClick={() => setShowReminderModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition"
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg"
             >
               🔔 Remind Me
             </button>
@@ -154,11 +141,8 @@ const AnalysisResult = () => {
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition disabled:opacity-70"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
             >
-              {downloading && (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              )}
               {downloading ? "Downloading..." : "Download Excel"}
             </button>
           </div>
@@ -168,69 +152,70 @@ const AnalysisResult = () => {
         <div className="px-6 pt-4">
           <input
             type="text"
-            placeholder="Search by Product ID / Product Name / Category"
+            placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-180 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border rounded-lg"
           />
         </div>
 
         {/* Table */}
         <div className="p-6 pt-4">
           <div className="border rounded-lg overflow-hidden">
-            <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
-              <table className="min-w-full text-sm text-gray-700">
-                <thead className="bg-blue-100 sticky top-0 z-10">
+            <div className="max-h-[60vh] overflow-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-blue-100 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-center font-semibold">
-                      Product ID
-                    </th>
-                    <th className="px-4 py-3 font-semibold">
-                      Product Name
-                    </th>
-                    <th className="px-4 py-3 font-semibold">
-                      Category
-                    </th>
+                    <th className="px-4 py-3 text-center">Product ID</th>
+                    <th className="px-4 py-3">Product Name</th>
+                    <th className="px-4 py-3">Category</th>
                     <th
                       onClick={toggleSort}
-                      className="px-4 py-3 text-center font-semibold cursor-pointer select-none"
+                      className="px-4 py-3 text-center cursor-pointer"
                     >
-                      <div className="flex items-center justify-center gap-1">
-                        Days Left
-                        {sortOrder === "asc" && <ArrowUp size={16} />}
-                        {sortOrder === "desc" && <ArrowDown size={16} />}
-                      </div>
+                      Days Left
+                      {sortOrder === "asc" && <ArrowUp size={14} />}
+                      {sortOrder === "desc" && <ArrowDown size={14} />}
                     </th>
-                    <th className="px-4 py-3 font-semibold">
-                      Stockout Date
-                    </th>
+                    <th className="px-4 py-3">Stockout Date</th>
+                    <th className="px-4 py-3 text-center">Dashboard</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {sortedData.map((row, index) => (
-                    <tr
-                      key={index}
-                      className="odd:bg-white even:bg-blue-50 hover:bg-blue-100 transition"
-                    >
-                      <td className="px-4 py-2 text-center">
-                        {row.product_id}
-                      </td>
-                      <td className="px-4 py-2">
-                        {row.product_name}
-                      </td>
-                      <td className="px-4 py-2">
-                        {row.category}
-                      </td>
-                      <td className="px-4 py-2 text-center font-bold text-red-600">
+                    <tr key={index} className="border-b">
+                      <td className="px-4 py-2 text-center">{row.product_id}</td>
+                      <td className="px-4 py-2">{row.product_name}</td>
+                      <td className="px-4 py-2">{row.category}</td>
+                      <td className="px-4 py-2 text-center text-red-600 font-bold">
                         {row.days_left}
                       </td>
-                      <td className="px-4 py-2">
-                        {row.stockout_date}
+                      <td className="px-4 py-2">{row.stockout_date}</td>
+
+                      {/* Dashboard Button */}
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          onClick={() =>
+                        navigate("/dashboard", {
+                          state: {
+                            product_id: row.product_id,
+                            product_name: row.product_name,
+                            category: row.category,
+                            days_left: row.days_left,
+                            stockout_date: row.stockout_date,
+                          },
+                        })
+                      }
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm"
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
+
               </table>
             </div>
           </div>
@@ -240,14 +225,8 @@ const AnalysisResult = () => {
       {/* Success Popup */}
       {showSuccessPopup && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
-            <span className="text-xl">✅</span>
-            <div>
-              <p className="font-semibold">Reminder Activated</p>
-              <p className="text-sm opacity-90">
-                You’ll receive emails on stockout dates
-              </p>
-            </div>
+          <div className="bg-white px-6 py-4 rounded-xl shadow-lg">
+            ✅ Reminder Activated Successfully
           </div>
         </div>
       )}
@@ -256,20 +235,16 @@ const AnalysisResult = () => {
       {showReminderModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white w-96 rounded-xl shadow-xl p-6">
-            <h3 className="text-lg font-bold mb-2">
+            <h3 className="text-lg font-bold mb-4">
               Get Stockout Reminders
             </h3>
-
-            <p className="text-sm text-gray-600 mb-4">
-              You will receive emails on each predicted stockout date.
-            </p>
 
             <input
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 mb-4"
+              className="w-full px-4 py-2 border rounded-lg mb-4"
             />
 
             <div className="flex justify-end gap-3">

@@ -15,8 +15,12 @@ model = joblib.load(MODEL_PATH)
 
 
 def predict_stockout(input_file):
-    # Run data pipeline
-    final_df = build_pipeline(input_file)
+
+    # Run updated pipeline
+    pipeline_output = build_pipeline(input_file)
+
+    # Use only aggregated features for prediction
+    final_df = pipeline_output["aggregated"]
 
     features = [
         "avg_daily_sales",

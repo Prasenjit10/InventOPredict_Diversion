@@ -15,7 +15,6 @@ def build_pipeline(dataset_path: str):
     order_items = df_dict.get("blinkit_order_items")
     products = df_dict.get("blinkit_products")
 
-    # Safety check
     if inventory is None or orders is None or order_items is None or products is None:
         raise ValueError("Required sheets missing in Excel file.")
 
@@ -42,7 +41,6 @@ def build_pipeline(dataset_path: str):
         how="left"
     )
 
-    # 🔥 CRITICAL FIX — remove null dates
     df = df.dropna(subset=["order_date"])
 
     if df.empty:
@@ -71,7 +69,7 @@ def build_pipeline(dataset_path: str):
         "festival_electronics_boost"
     ] = df["festival_score"]
 
-    # ---------- Daily Sales ----------
+    # ---------- Daily Sales (FOR DASHBOARD) ----------
     daily_sales = df.groupby(
         ["product_id", "order_date"]
     )["quantity"].sum().reset_index()
@@ -79,6 +77,7 @@ def build_pipeline(dataset_path: str):
     if daily_sales.empty:
         raise ValueError("Daily sales dataframe is empty.")
 
+    # ---------- Aggregated Features (FOR PREDICTION) ----------
     product_features = daily_sales.groupby("product_id")["quantity"].agg([
         "mean", "std"
     ]).reset_index()
@@ -90,7 +89,7 @@ def build_pipeline(dataset_path: str):
 
     product_features["sales_volatility"] = product_features["sales_volatility"].fillna(0)
 
-    # ---------- Festival Aggregation ----------
+    # Festival Aggregation
     festival_features = df.groupby("product_id")[[
         "festival_score",
         "festival_electronics_boost"
@@ -132,4 +131,7 @@ def build_pipeline(dataset_path: str):
     if product_features.empty:
         raise ValueError("Final product_features is empty.")
 
-    return product_features
+    return {
+        "aggregated": product_features,
+        "daily_sales": daily_sales
+    }
