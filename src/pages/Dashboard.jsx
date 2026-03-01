@@ -88,9 +88,9 @@ const Dashboard = () => {
       </div>
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
 
-        <KPI
+        {/* <KPI
           icon={TrendingUp}
           label="Avg Daily Sales"
           value={
@@ -98,7 +98,7 @@ const Dashboard = () => {
               ? dashboardData.avg_daily_sales.toFixed(2)
               : "0"
           }
-        />
+        /> */}
 
         <KPI
           icon={CalendarDays}
@@ -146,13 +146,13 @@ const Dashboard = () => {
               strokeWidth={3}
             />
 
-            <Line
+            {/* <Line
               type="monotone"
               dataKey="movingAvg"
               stroke="#10b981"
               strokeDasharray="5 5"
               strokeWidth={2}
-            />
+            /> */}
           </LineChart>
         </ResponsiveContainer>
       </div>
